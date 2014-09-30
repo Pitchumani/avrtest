@@ -1,3 +1,23 @@
+2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
+
+	Support -q for quiet operation.
+
+	* README (-q): Document it.
+	* options.def (q): New entry.
+	* avrtest.c (stdarg.h): Include it.
+	(qprintf): New function.
+	(leave): Use it as needed, pass exit status from program on -q.
+	Turn to varargs function.
+	* logging.c (putchar_escaped): New function.
+	(do_put_args): Use it.  And use qprintf as needed.
+	(do_log_cmd, perf_instruction, log_dump_line): Use qprintf as needed.
+	* options.c (USAGE): Add -q.
+	(usage): Turn to varargs function.
+	(get_valid_number): New function.
+	(parse_args) [-e,-m]: Use it.
+	* testavr.h (qprintf): New prototype.
+	(EXIT_STATUS_USAGE, EXIT_STATUS_FATAL): New exit stati.
+
 2014-09-29  Georg-Johann Lay  <avr@gjlay.de>
 
 	Support -args, -no-log, LOG_PORT.
