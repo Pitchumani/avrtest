@@ -1,5 +1,9 @@
 2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
 
+	* AUTHORS: New file.
+
+2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
+
 	* logging.c (s_SREG): Make global.
 	(log_add_flag_read): New function.
 	(branch_on_sreg_condition): Use it.
@@ -416,7 +420,7 @@
 
 2012-02-23  Georg-Johann Lay  <avr@gjlay.de>
 
-	* avrtest.c (avr_op_EICALL, avr_op_EIJMP): Use get_word_reg to read Z. 
+	* avrtest.c (avr_op_EICALL, avr_op_EIJMP): Use get_word_reg to read Z.
 
 2012-02-23  Georg-Johann Lay  <avr@gjlay.de>
 
@@ -481,7 +485,7 @@
 	Increase RAM and stack size.
 	Set Compat options to restrict compatibility tests and optimize to
 	reduce size.
-	Extend simulation  time limit.
+	Extend simulation time limit.
 
 2008-06-04  Eric B. Weddington  <eric.weddington@atmel.com>
 
