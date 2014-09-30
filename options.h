@@ -63,7 +63,7 @@ typedef struct
 
 typedef struct
 {
-  int argc, i, addr, on, request;
+  int argc, i, addr, request;
   char **argv;
 } args_t;
 

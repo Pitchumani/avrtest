@@ -225,7 +225,8 @@ do_put_args (byte x)
       for (int j = 0; j < len; j++)
         {
           char c = arg[j];
-          if (c == '\n')       { putchar ('\\'); putchar ('n'); }
+          if (c == '\0')       {}
+          else if (c == '\n')  { putchar ('\\'); putchar ('n'); }
           else if (c == '\t')  { putchar ('\\'); putchar ('t'); }
           else if (c == '\r')  { putchar ('\\'); putchar ('r'); }
           else if (c == '\"')  { putchar ('\\'); putchar ('\"'); }
@@ -287,7 +288,7 @@ do_log_cmd (int x)
         {
         case LOG_GET_ARGS_NUM:
           args.request = 2;
-          printf ("*** transfer %s-args\n", args.on ? "" : "-no");
+          printf ("*** transfer %s-args\n", options.do_args ? "" : "-no");
           break;
         case LOG_START_NUM:
           puts ("*** start log");

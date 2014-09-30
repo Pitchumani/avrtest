@@ -62,22 +62,28 @@ init_exit_c (void)
 }
 
 
-static void __attribute__ ((naked, section(".init9"), used))
+static void __attribute__ ((naked, section(".init8"), used))
 init_args (void)
 {
   if (BY_AVRTEST_LOG)
     {
+/*
       extern void *__heap_start[];
       uintptr_t pargs = (uintptr_t) __heap_start;
+*/
+      uintptr_t pargs = (uintptr_t) 0xf000;
       LOG_GET_ARGS;
       LOG_PORT = pargs;
       LOG_PORT = pargs >> 8;
     }
   else
     {
+/*
       static void *pnull[2];
-      register int r24 __asm ("24") = 0;
-      register void **r22 __asm ("22") = pnull;
+*/
+      void **pnull = (void**) 0xf000;
+      register int r24 __asm ("24");
+      register void **r22 __asm ("22");
       __asm volatile ("" :: "r" (r24 = 0), "r" (r22 = pnull));
     }
 }

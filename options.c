@@ -141,7 +141,8 @@ parse_args (int argc, char *argv[])
               for (const arch_t *d = arch_desc; d->name; d++)
                 if (d->name == NULL)
                   usage();
-                else if (strcmp (argv[i] + 6, d->name) == 0)
+                else if (is_xmega == d->is_xmega
+                         && strcmp (argv[i] + 6, d->name) == 0)
                   arch = *d;
               break;
             } // -mmcu=
