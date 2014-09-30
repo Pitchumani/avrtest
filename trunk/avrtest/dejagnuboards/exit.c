@@ -72,7 +72,7 @@ init_args (void)
       uintptr_t pargs = (uintptr_t) __heap_start;
 */
       uintptr_t pargs = (uintptr_t) 0xf000;
-      LOG_GET_ARGS;
+      LOG_PORT = LOG_GET_ARGS_CMD;
       LOG_PORT = pargs;
       LOG_PORT = pargs >> 8;
     }

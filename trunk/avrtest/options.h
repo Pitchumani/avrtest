@@ -51,6 +51,9 @@ enum
 
 typedef struct
 {
+  // program name of avrtest
+  const char *self;
+
   // filename of the file being executed
   const char *program_name;
 
