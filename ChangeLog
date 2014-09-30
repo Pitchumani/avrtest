@@ -1,5 +1,12 @@
 2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
 
+	* logging.c (s_SREG): Make global.
+	(log_add_flag_read): New function.
+	(branch_on_sreg_condition): Use it.
+	(data_write_magic_port) <leave>: Add exit value to reason.
+
+2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
+
 	* dejagnuboargs/exit.c (xargc, xargv): Clean up.
 	(init_exit_c:file_exit_c): Initialize statically.
 

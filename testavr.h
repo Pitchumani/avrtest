@@ -103,13 +103,14 @@ typedef struct
 
 // empty placeholders to keep the rest of the code clean
 
-#define log_add_instr(...)    (void) 0
-#define log_add_bit(...)      (void) 0
-#define log_add_immed(...)    (void) 0
-#define log_add_data_mov(...) (void) 0
-#define log_add_reg_mov(...)  (void) 0
-#define log_dump_line(...)    (void) 0
-#define do_log_cmd(...)       (void) 0
+#define log_add_instr(...)     (void) 0
+#define log_add_bit(...)       (void) 0
+#define log_add_immed(...)     (void) 0
+#define log_add_data_mov(...)  (void) 0
+#define log_add_reg_mov(...)   (void) 0
+#define log_add_flag_read(...) (void) 0
+#define log_dump_line(...)     (void) 0
+#define do_log_cmd(...)        (void) 0
 
 #else
 
@@ -117,8 +118,9 @@ extern void log_add_data (const char *data);
 extern void log_add_instr (const decoded_op *op);
 extern void log_add_immed (int value);
 extern void log_add_data_mov (const char *format, int addr, int value);
-extern void log_dump_line (int id);
+extern void log_add_flag_read (int mask, int value);
 extern void log_add_reg_mov (const char *format, int regno, int value);
+extern void log_dump_line (int id);
 extern void do_log_cmd (int x);
 
 #endif  // LOG_DUMP
