@@ -1,5 +1,10 @@
 2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
 
+	* dejagnuboargs/exit.c (xargc, xargv): Clean up.
+	(init_exit_c:file_exit_c): Initialize statically.
+
+2014-09-30  Georg-Johann Lay  <avr@gjlay.de>
+
 	Support -q for quiet operation.
 
 	* README (-q): Document it.

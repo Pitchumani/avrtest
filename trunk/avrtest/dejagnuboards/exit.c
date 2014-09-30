@@ -45,18 +45,16 @@ putchar_exit_c (char c, FILE *stream)
 
 #define BY_AVRTEST_LOG (*((unsigned char*) 0xffff))
 
-static int xargc;
-static int xargv;
-
 static void __attribute__ ((constructor, used))
 init_exit_c (void)
 {
-  static FILE file_exit_c;
-  
-  file_exit_c.put = putchar_exit_c;
-  file_exit_c.get = NULL;
-  file_exit_c.flags = _FDEV_SETUP_WRITE;
-  file_exit_c.udata = 0;
+  static FILE file_exit_c =
+    {
+      .put   = putchar_exit_c,
+      .get   = NULL,
+      .flags = _FDEV_SETUP_WRITE,
+      .udata = 0,
+    };
 
   stderr = stdout = &file_exit_c;
 }
@@ -101,6 +99,6 @@ exit (int code)
 void __attribute__ ((noreturn))
 abort (void)
 {
-  ABORT_PORT = 1;
+  ABORT_PORT = 0;
   for (;;);
 }
