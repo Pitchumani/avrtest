@@ -292,8 +292,7 @@ data_write_magic_port (int address, int value)
         cpu_data[address] = value;
       break;
     case EXIT_PORT:
-      exit_value = value;
-      leave (EXIT_STATUS_EXIT, "exit function called");
+      leave (EXIT_STATUS_EXIT, "exit(%d) function called", exit_value = value);
       break;
     case ABORT_PORT:
       leave (EXIT_STATUS_ABORTED, "abort function called");
@@ -366,7 +365,7 @@ data_read_magic_byte (int address)
     // default action, just read the value
     ret = cpu_data[address];
 
-  log_add_data_mov (address == SREG ? "(SREG)->'%s' " : "(%s)->%02x ",
+  log_add_data_mov (address == SREG ? "(SREG)->'%s'" : "(%s)->%02x ",
                     address, ret);
   return ret;
 }
@@ -724,7 +723,9 @@ skip_instruction_on_condition (int condition)
 static INLINE void
 branch_on_sreg_condition (int rd, int rr, int flag_value)
 {
-  if (((data_read_byte (SREG) & rr) != 0) == flag_value)
+  int flag = data_read_byte (SREG) & rr;
+  log_add_flag_read (rr, flag);
+  if ((flag != 0) == flag_value)
     {
       int delta = rd;
       // if (delta & 0x40) delta |= ~0x7F;
@@ -1519,7 +1520,7 @@ static OP_FUNC_TYPE func_FMULSU (int rd, int rr)
 
 static OP_FUNC_TYPE func_LAST_FAST (int rd, int rr)
 {
-  leave (EXIT_STATUS_FATAL, "internal error");
+  leave (EXIT_STATUS_FATAL, "func_LAST_FAST must be unreachable");
 }
 
 #define func_NULL NULL

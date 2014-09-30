@@ -36,7 +36,7 @@
 #error no function herein is needed without LOG_DUMP
 #endif // LOG_DUMP
 
-static const char s_SREG[] = "CZNVSHTI";
+const char s_SREG[] = "CZNVSHTI";
 
 // ports used for application <-> simulator interactions
 #define IN_AVRTEST
@@ -160,6 +160,20 @@ log_add_immed (int value)
   sprintf (buf, "(###)->%02x ", value);
   log_add_data (buf);
 }
+
+
+void
+log_add_flag_read (int mask, int value)
+{
+  int bit = mask_to_bit (mask);
+
+  if (bit < 0 || bit > 7)
+    leave (EXIT_STATUS_FATAL, "not a power of 2: %02x", mask);
+
+  sprintf (buf, " %c->%c", s_SREG[bit], '0' + !!value);
+  log_add_data (buf);
+}
+
 
 void
 log_add_data_mov (const char *format, int addr, int value)
