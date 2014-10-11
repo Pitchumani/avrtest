@@ -31,10 +31,31 @@
 
 #include "testavr.h"
 #include "options.h"
+#include "flag-tables.h"
 #include "sreg.h"
 
 // ---------------------------------------------------------------------------
-//     register and port definitions
+// register and port definitions
+
+#define REGX    26
+#define REGY    28
+#define REGZ    30
+
+#define SREG    (0x3F + IOBASE)
+#define SPH     (0x3E + IOBASE)
+#define SPL     (0x3D + IOBASE)
+#define EIND    (0x3C + IOBASE)
+#define RAMPZ   (0x3B + IOBASE)
+
+// ----------------------------------------------------------------------------
+// information about program incarnation (avrtest_log, avrtest-xmega, ...)
+// use the global constants only at places where performance does not
+// matter e.g. in option parsing, so that these modules are independent
+// of ISA_XMEGA and AVRTEST_LOG.
+
+// io_base :        load-flash.c:decode_opcode()   map I/O -> RAM
+// is_avrtest_log : load-flash.c:load_elf()        load ELF symbols
+// is_xmega :       options.c:parse_args()         legal -mmcu=MCU
 
 #ifdef ISA_XMEGA
 #define IOBASE  0
@@ -46,48 +67,24 @@ const int is_xmega = 1;
 const int is_xmega = 0;
 #endif
 
+const int io_base = IOBASE;
+
 #ifdef AVRTEST_LOG
 const int is_avrtest_log = 1;
 #else
 const int is_avrtest_log = 0;
 #endif
 
-const int io_base = IOBASE;
+// ----------------------------------------------------------------------------
+// ports like EXIT_PORT used for application <-> simulator interactions 
 
-#define SREG    (0x3F + IOBASE)
-#define SPH     (0x3E + IOBASE)
-#define SPL     (0x3D + IOBASE)
-#define EIND    (0x3C + IOBASE)
-#define RAMPZ   (0x3B + IOBASE)
-
-
-// ports used for application <-> simulator interactions
 #define IN_AVRTEST
 #include "avrtest.h"
-#include "flag-tables.h"
 
-#define REGX    26
-#define REGY    28
-#define REGZ    30
 
 // ----------------------------------------------------------------------------
-//     some helpful types and constants
-
-static const char *exit_status_text[] =
-  {
-    // "EXIT" and "ABORTED" are keywords scanned by board descriptions.
-    [EXIT_STATUS_EXIT]    = "EXIT",
-    [EXIT_STATUS_ABORTED] = "ABORTED",
-    [EXIT_STATUS_TIMEOUT] = "TIMEOUT",
-    
-    [EXIT_STATUS_USAGE]   = "ABORTED",
-    [EXIT_STATUS_FILE]    = "ABORTED",
-    [EXIT_STATUS_MEMORY]  = "ABORTED",
-    [EXIT_STATUS_FATAL]   = "FATAL ABORTED"
-  };
-
-// ---------------------------------------------------------------------------
-// vars that hold core definitions
+// vars that hold simulator state and program information.
+// These are kept as global vars for simplicity
 
 // maximum number of executed instructions (used as a timeout)
 dword max_instr_count;
@@ -95,16 +92,22 @@ dword max_instr_count;
 // number of executed instructions so far
 dword instr_count;
 
-unsigned int program_size;
-
-// ----------------------------------------------------------------------------
-// vars that hold simulator state. These are kept as global vars for simplicity
-
 // cycle counter
 dword program_cycles;
 
-unsigned cpu_PC;
+// program entry point (byte address) from ELF header or 0 for non-ELF.
+// can be set by -e
 unsigned program_entry_point;
+
+// size in bytes of program in flash
+unsigned int program_size;
+
+
+// ---------------------------------------------------------------------------
+// vars that hold AVR states: PC, RAM and Flash
+
+// Word address of current PC and offset into decoded_flash[].
+unsigned cpu_PC;
 
 #ifdef ISA_XMEGA
 static byte cpu_reg[0x20];
@@ -120,7 +123,45 @@ static byte cpu_data[MAX_RAM_SIZE];
 static byte cpu_flash[MAX_FLASH_SIZE];
 static decoded_t decoded_flash[MAX_FLASH_SIZE/2];
 
+
+// ---------------------------------------------------------------------------
+// Exit stati as used with leave()
+
+typedef struct
+  {
+    // Holding some keyword that is scanned by board descriptions
+    const char *text;
+    // Specify kind of failure (not from target program) error
+    const char *kind;
+    // Whether we exit because of avrtest or usage problems rather than
+    // problems in the target program
+    int failure;
+    // Exit value with -q quiet operation, cf. README
+    int quiet_value;
+  } exit_status_t;
+
+static byte exit_value;
+
+static const exit_status_t exit_status[] = 
+  {
+    // "EXIT" and "ABORTED" are keywords scanned by board descriptions.
+    // -1 : Use exit_value (only set to != 0 with EXIT_STATUS_EXIT)
+    [EXIT_STATUS_EXIT]    = { "EXIT",    NULL, EXIT_SUCCESS, -1 },
+    [EXIT_STATUS_ABORTED] = { "ABORTED", NULL, EXIT_SUCCESS, EXIT_FAILURE },
+    [EXIT_STATUS_TIMEOUT] = { "TIMEOUT", NULL, EXIT_SUCCESS, 10 },
+    // Something went badly wrong
+    [EXIT_STATUS_FILE]    = { "ABORTED", "file",        EXIT_FAILURE, 11 },
+    [EXIT_STATUS_MEMORY]  = { "ABORTED", "memory",      EXIT_FAILURE, 12 },
+    [EXIT_STATUS_USAGE]   = { "ABORTED", "usage",       EXIT_FAILURE, 13 },
+    [EXIT_STATUS_FATAL]   = { "FATAL ABORTED", "fatal", EXIT_FAILURE, 42 },
+  };
+
+
+// ---------------------------------------------------------------------------
+// vars used with -runtime to measure avrtest performance
+
 static struct timeval t_start, t_decode, t_execute, t_load;
+
 
 static void
 time_sub (unsigned long *s, unsigned long *us, double *ms,
@@ -142,6 +183,46 @@ time_sub (unsigned long *s, unsigned long *us, double *ms,
 }
 
 
+static void
+print_runtime (void)
+{
+  struct timeval t_end;
+  unsigned long r_sec, e_sec, d_sec, l_sec, r_us, e_us, d_us, l_us;
+  double r_ms, e_ms, d_ms, l_ms;
+
+  gettimeofday (&t_end, NULL);
+  time_sub (&r_sec, &r_us, &r_ms, &t_end, &t_start);
+  time_sub (&e_sec, &e_us, &e_ms, &t_end, &t_execute);
+  time_sub (&d_sec, &d_us, &d_ms, &t_execute, &t_decode);
+  time_sub (&l_sec, &l_us, &l_ms, &t_decode, &t_load);
+
+  printf ("        load: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
+          " %6.2f%%,  %10.3f        bytes/ms, 0x%05x = %u bytes\n",
+          l_sec/60, l_sec%60, l_us, l_sec, l_us/1000,
+          r_ms > 0.01 ? 100.*l_ms/r_ms : 0.0,
+          l_ms > 0.01 ? program_size/l_ms : 0.0,
+          program_size, program_size);
+
+  printf ("      decode: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
+          " %6.2f%%,  %10.3f        bytes/ms, 0x%05x = %u bytes\n",
+          d_sec/60, d_sec%60, d_us, d_sec, d_us/1000,
+          r_ms > 0.01 ? 100.*d_ms/r_ms : 0.0,
+          d_ms > 0.01 ? program_size/d_ms : 0.0,
+          program_size, program_size);
+
+  printf ("     execute: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
+          " %6.2f%%,  %10.3f instructions/ms\n",
+          e_sec/60, e_sec%60, e_us, e_sec, e_us/1000,
+          r_ms > 0.01 ? 100.*e_ms/r_ms : 0.0,
+          e_ms > 0.01 ? instr_count/e_ms : 0.0);
+
+  printf (" avrtest run: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
+          " %6.2f%%,  %10.3f instructions/ms\n",
+          r_sec/60, r_sec%60, r_us, r_sec, r_us/1000, 100.,
+          r_ms > 0.01 ? instr_count/r_ms : 0.0);
+}
+
+
 // Skip any output if -q (quiet) is on
 void qprintf (const char *fmt, ...)
 {
@@ -154,68 +235,30 @@ void qprintf (const char *fmt, ...)
     }
 }
 
-static byte exit_value;
 
 void NOINLINE NORETURN
-leave (int status, const char *reason, ...)
+leave (int n, const char *reason, ...)
 {
-  int args_consumed = 0;
-  static char s_runtime[200], s_decode[200], s_execute[200], s_load[200];
-  int failing = status >= EXIT_STATUS_USAGE;
+  const exit_status_t *status = & exit_status[n];
+  va_list args;
 
   // make sure we print the last log line before leaving
   log_dump_line (0);
 
   qprintf ("\n");
 
-  if (options.do_runtime && !failing)
-    {
-      struct timeval t_end;
-      unsigned long r_sec, e_sec, d_sec, l_sec, r_us, e_us, d_us, l_us;
-      double r_ms, e_ms, d_ms, l_ms;
-      gettimeofday (&t_end, ((void *)0));
-      time_sub (&r_sec, &r_us, &r_ms, &t_end, &t_start);
-      time_sub (&e_sec, &e_us, &e_ms, &t_end, &t_execute);
-      time_sub (&d_sec, &d_us, &d_ms, &t_execute, &t_decode);
-      time_sub (&l_sec, &l_us, &l_ms, &t_decode, &t_load);
-
-      sprintf (s_load, "        load: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
-               " %6.2f%%,  %10.3f        bytes/ms, 0x%05x = %u bytes\n",
-               l_sec/60, l_sec%60, l_us, l_sec, l_us/1000,
-               r_ms > 0.01 ? 100.*l_ms/r_ms : 0.0,
-               l_ms > 0.01 ? program_size/l_ms : 0.0,
-               program_size, program_size);
-
-      sprintf (s_decode, "      decode: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
-               " %6.2f%%,  %10.3f        bytes/ms, 0x%05x = %u bytes\n",
-               d_sec/60, d_sec%60, d_us, d_sec, d_us/1000,
-               r_ms > 0.01 ? 100.*d_ms/r_ms : 0.0,
-               d_ms > 0.01 ? program_size/d_ms : 0.0,
-               program_size, program_size);
-
-      sprintf (s_execute, "     execute: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
-               " %6.2f%%,  %10.3f instructions/ms\n",
-               e_sec/60, e_sec%60, e_us, e_sec, e_us/1000,
-               r_ms > 0.01 ? 100.*e_ms/r_ms : 0.0,
-               e_ms > 0.01 ? instr_count/e_ms : 0.0);
-
-      sprintf (s_runtime, " avrtest run: %lu:%02lu.%06lu  = %3lu.%03lu sec  ="
-               " %6.2f%%,  %10.3f instructions/ms\n",
-               r_sec/60, r_sec%60, r_us, r_sec, r_us/1000,
-               100.,
-               r_ms > 0.01 ? instr_count/r_ms : 0.0);
-
-      printf ("%s%s%s%s", s_load, s_decode, s_execute, s_runtime);
-    }
+  if (options.do_runtime
+      && EXIT_SUCCESS == status->failure)
+    print_runtime();
 
   if (!options.do_quiet)
     {
-      va_list args;
       va_start (args, reason);
 
       printf (" exit status: %s\n"
-              "      reason: ",
-              exit_status_text[exit_value ? EXIT_STATUS_ABORTED : status]);
+              "      reason: ", exit_value
+              ? exit_status[EXIT_STATUS_ABORTED].text
+              : status->text);
       vprintf (reason, args);
       printf ("\n"
               "     program: %s\n",
@@ -226,50 +269,27 @@ leave (int status, const char *reason, ...)
               "total cycles: %u\n\n", cpu_PC * 2, program_cycles);
 
       va_end (args);
-      args_consumed = 1;
-    }
-  else
-    switch (status)
-      {
-      case EXIT_STATUS_EXIT:     exit (exit_value);
-      case EXIT_STATUS_ABORTED:  exit (EXIT_FAILURE);
-      case EXIT_STATUS_TIMEOUT:  exit (10);
-      case EXIT_STATUS_FILE:     exit (11);
-      case EXIT_STATUS_MEMORY:   exit (12);
-      case EXIT_STATUS_USAGE:
-        {
-          FILE *out = stdout;
-          va_list args;
-          va_start (args, reason);
-          fprintf (out, "\n%s: ", options.self);
-          vfprintf (out, reason, args);
-          fprintf (out, "\n");
-          va_end (args);
-          fflush (out);
-        }
-        exit (13);
-      default:
-        status = EXIT_STATUS_FATAL;
-      }
+      fflush (stdout);
 
-  if (EXIT_STATUS_FATAL == status)
+      exit (status->failure);
+    }
+
+  fflush (stdout);
+
+  if (status->failure != EXIT_SUCCESS)
     {
-      if (!args_consumed)
-        {
-          va_list args;
-          va_start (args, reason);
+      FILE *out = stderr;
+      va_start (args, reason);
 
-          fprintf (stderr, "\n%s: internal error: ", options.self);
-          vfprintf (stderr, reason, args);
-          fprintf (stderr, "\n");
-          fflush (stderr);
+      fprintf (out, "\n%s: %s error: ", options.self, status->kind);
+      vfprintf (out, reason, args);
+      fprintf (out, "\n");
+      fflush (out);
 
-          va_end (args);
-        }
-      exit (42);
+      va_end (args);
     }
 
-  exit (failing ? EXIT_FAILURE : EXIT_SUCCESS);
+  exit (n == EXIT_STATUS_EXIT ? exit_value : status->quiet_value);
 }
 
 // ----------------------------------------------------------------------------
@@ -614,16 +634,15 @@ push_byte (int value)
   // register area
   if (sp < 0x40 + IOBASE)
     leave (EXIT_STATUS_ABORTED, "stack pointer overflow (SP = 0x%04x)", sp);
-  data_write_byte (sp, value);
-  data_write_word (SPL, sp - 1);
+  data_write_byte (sp--, value);
+  data_write_word (SPL, sp);
 }
 
 static int
 pop_byte(void)
 {
   int sp = data_read_word (SPL);
-  sp++;
-  data_write_word (SPL, sp);
+  data_write_word (SPL, ++sp);
   return data_read_byte (sp);
 }
 
@@ -635,15 +654,10 @@ push_PC (void)
   // register area
   if (sp < 0x40 + IOBASE)
     leave (EXIT_STATUS_ABORTED, "stack pointer overflow (SP = 0x%04x)", sp);
-  data_write_byte (sp, cpu_PC);
-  sp--;
-  data_write_byte (sp, cpu_PC >> 8);
-  sp--;
+  data_write_byte (sp--, cpu_PC);
+  data_write_byte (sp--, cpu_PC >> 8);
   if (arch.pc_3bytes)
-    {
-      data_write_byte (sp, cpu_PC >> 16);
-      sp--;
-    }
+    data_write_byte (sp--, cpu_PC >> 16);
   data_write_word (SPL, sp);
 }
 
@@ -661,21 +675,16 @@ pop_PC (void)
   int sp = data_read_word (SPL);
   if (arch.pc_3bytes)
     {
-      sp++;
-      pc = data_read_byte (sp) << 16;
+      pc = data_read_byte (++sp) << 16;
       if (pc >= MAX_FLASH_SIZE / 2)
         {
-          sp++;
-          pc |= data_read_byte (sp) << 8;
-          sp++;
-          pc |= data_read_byte (sp);
+          pc |= data_read_byte (++sp) << 8;
+          pc |= data_read_byte (++sp);
           bad_PC (pc);
         }
     }
-  sp++;
-  pc |= data_read_byte (sp) << 8;
-  sp++;
-  pc |= data_read_byte (sp);
+  pc |= data_read_byte (++sp) << 8;
+  pc |= data_read_byte (++sp);
   data_write_word (SPL, sp);
   cpu_PC = pc;
 }
@@ -777,20 +786,12 @@ load_program_memory (int rd, int use_RAMPZ, int incr)
 }
 
 static INLINE void
-skip_instruction_on_condition (int condition, int size)
+skip_instruction_on_condition (int condition, int words_to_skip)
 {
   if (condition)
     {
-      if (size == 0)
-        {
-          decoded_t *d = & decoded_flash[cpu_PC];
-          size = opcodes[d->id].size;
-          // Patch ID_CPSE to ID_CPSE1 resp. ID_CPSE2 so we don't need
-          // to look up size in the remainder.
-          (d - size)->id += size;
-        }
-      cpu_PC = (cpu_PC + size) & PC_VALID_MASK;
-      add_program_cycles (size);
+      cpu_PC = (cpu_PC + words_to_skip) & PC_VALID_MASK;
+      add_program_cycles (words_to_skip);
     }
 }
 
@@ -801,10 +802,7 @@ branch_on_sreg_condition (int rd, int rr, int flag_value)
   log_add_flag_read (rr, flag);
   if ((flag != 0) == flag_value)
     {
-      int delta = rd;
-      // if (delta & 0x40) delta |= ~0x7F;
-      unsigned neg = (delta & 0x40) << 1;
-      delta |= -neg;
+      int8_t delta = rd;
       cpu_PC = (cpu_PC + delta) & PC_VALID_MASK;
       add_program_cycles (1);
     }
@@ -1001,14 +999,8 @@ static OP_FUNC_TYPE func_CPC (int rd, int rr)
   do_subtraction_8 (0, get_reg (rd), get_reg (rr), get_carry(), 1, 0);
 }
 
-/* 0001 00rd dddd rrrr | CPSE */
-static OP_FUNC_TYPE func_CPSE (int rd, int rr)
-{
-  skip_instruction_on_condition (get_reg (rd) == get_reg (rr), 0);
-}
-
 /* 0001 00rd dddd rrrr | CPSE skipping 1 word */
-static OP_FUNC_TYPE func_CPSE1 (int rd, int rr)
+static OP_FUNC_TYPE func_CPSE (int rd, int rr)
 {
   skip_instruction_on_condition (get_reg (rd) == get_reg (rr), 1);
 }
@@ -1373,14 +1365,8 @@ static OP_FUNC_TYPE func_BST (int rd, int rr)
   update_flags (FLAG_T, bit ? FLAG_T : 0);
 }
 
-/* 1111 110d dddd 0bbb | SBRC */
-static OP_FUNC_TYPE func_SBRC (int rd, int rr)
-{
-  skip_instruction_on_condition (!(get_reg (rd) & rr), 0);
-}
-
 /* 1111 110d dddd 0bbb | SBRC skipping 1 word */
-static OP_FUNC_TYPE func_SBRC1 (int rd, int rr)
+static OP_FUNC_TYPE func_SBRC (int rd, int rr)
 {
   skip_instruction_on_condition (!(get_reg (rd) & rr), 1);
 }
@@ -1391,14 +1377,8 @@ static OP_FUNC_TYPE func_SBRC2 (int rd, int rr)
   skip_instruction_on_condition (!(get_reg (rd) & rr), 2);
 }
 
-/* 1111 111d dddd 0bbb | SBRS */
-static OP_FUNC_TYPE func_SBRS (int rd, int rr)
-{
-  skip_instruction_on_condition (get_reg (rd) & rr, 0);
-}
-
 /* 1111 111d dddd 0bbb | SBRS skipping 1 word */
-static OP_FUNC_TYPE func_SBRS1 (int rd, int rr)
+static OP_FUNC_TYPE func_SBRS (int rd, int rr)
 {
   skip_instruction_on_condition (get_reg (rd) & rr, 1);
 }
@@ -1530,14 +1510,8 @@ static OP_FUNC_TYPE func_SBI (int rd, int rr)
   data_write_magic_byte (rd, data_read_magic_byte (rd) | rr);
 }
 
-/* 1001 1001 AAAA Abbb | SBIC */
-static OP_FUNC_TYPE func_SBIC (int rd, int rr)
-{
-  skip_instruction_on_condition (!(data_read_magic_byte (rd) & rr), 0);
-}
-
 /* 1001 1001 AAAA Abbb | SBIC skipping 1 word */
-static OP_FUNC_TYPE func_SBIC1 (int rd, int rr)
+static OP_FUNC_TYPE func_SBIC (int rd, int rr)
 {
   skip_instruction_on_condition (!(data_read_magic_byte (rd) & rr), 1);
 }
@@ -1548,14 +1522,8 @@ static OP_FUNC_TYPE func_SBIC2 (int rd, int rr)
   skip_instruction_on_condition (!(data_read_magic_byte (rd) & rr), 2);
 }
 
-/* 1001 1011 AAAA Abbb | SBIS */
-static OP_FUNC_TYPE func_SBIS (int rd, int rr)
-{
-  skip_instruction_on_condition (data_read_magic_byte (rd) & rr, 0);
-}
-
 /* 1001 1011 AAAA Abbb | SBIS skipping 1 word */
-static OP_FUNC_TYPE func_SBIS1 (int rd, int rr)
+static OP_FUNC_TYPE func_SBIS (int rd, int rr)
 {
   skip_instruction_on_condition (data_read_magic_byte (rd) & rr, 1);
 }
@@ -1645,13 +1613,17 @@ static OP_FUNC_TYPE func_FMULSU (int rd, int rr)
   do_multiply (rd, rr, 1, 0, 1);
 }
 
-#define func_LAST_FAST NULL
-#define func_xmega NULL
-#define func_NULL NULL
 
+static OP_FUNC_TYPE func__null (int rd, int rr)
+{
+  leave (EXIT_STATUS_FATAL, "function must be unreachable");
+}
+
+#define func__last_fast  func__null
 
 // ----------------------------------------------------------------------------
-// flash pre-decoding functions
+// AVR opcodes
+// depends on CX and thus on ISA_XMEGA, hence this table lives in avrtest.c
 
 const opcode_t opcodes[] =
   {
@@ -1693,7 +1665,7 @@ do_step (void)
   add_program_cycles (insn->cycles);
   int op1 = d.op1;
   int op2 = d.op2;
-  if (id >= ID_LAST_FAST)
+  if (id >= ID__last_fast)
     insn->func (op1, op2);
   else
     do_fast (id, op1, op2);
