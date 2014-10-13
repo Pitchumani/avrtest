@@ -32,6 +32,7 @@
 
 #define MAX_RAM_SIZE     (64 * 1024)
 #define MAX_FLASH_SIZE  (256 * 1024)  // Must be at least 128KB
+#define MAX_EEPROM_SIZE  (16 * 1024)  // .eeprom is read from ELF but unused
 
 // PC is used as array index into decoded_flash[].
 // If PC has bits outside the following mask, something went really wrong,
@@ -50,12 +51,36 @@ typedef struct
   word op2;
 } decoded_t;
 
+typedef struct
+{
+  // Program entry byte address as of ELF header or set
+  // by -e ENTRY
+  unsigned entry_point;
+
+  // Size in bytes of program in flash (assuming it starts at 0x0).
+  unsigned size;
+
+  // Number of bytes read from file.
+  unsigned n_bytes;
+
+  // Range that covers executable code's byte addresses.  That range might
+  // contain non-executable code like ELF headers that are part of PHDRs.
+  unsigned code_start, code_end;
+
+  // Maximum number of instructions to be executed,
+  // used as a timeout.  Can be set my -m CYCLES
+  dword max_insns;
+
+  // Number of instructions simulated so far.
+  dword n_insns;
+
+  // Cycles consumed by the program so far.
+  dword n_cycles;
+} program_t;
+
+extern program_t program;
+
 extern unsigned cpu_PC;
-extern unsigned program_entry_point;
-extern unsigned program_size;
-extern dword max_instr_count;
-extern dword instr_count;
-extern dword program_cycles;
 extern const int is_xmega;
 extern const int io_base;
 extern const int is_avrtest_log;
@@ -125,11 +150,13 @@ typedef struct
 #define log_add_data_mov(...)  (void) 0
 #define log_add_flag_read(...) (void) 0
 #define log_dump_line(...)     (void) 0
+#define do_log_port_cmd(...)   (void) 0
+#define flush_ticks_port(...)  (void) 0
 #define log_set_func_symbol(...) (void) 0
 
 #else
 
-extern void log_init (void);
+extern void log_init (unsigned);
 extern void log_append (const char *fmt, ...);
 extern void log_add_instr (const decoded_t *op);
 extern void log_add_data_mov (const char *format, int addr, int value);
@@ -137,11 +164,12 @@ extern void log_add_flag_read (int mask, int value);
 extern void log_add_reg_mov (const char *format, int regno, int value);
 extern void log_dump_line (int id);
 extern void do_log_port_cmd (int x);
+extern void flush_ticks_port (int addr);
 extern void log_set_func_symbol (int, const char*, int);
 
 #endif  // AVRTEST_LOG
 
-extern void load_to_flash (const char *filename, byte flash[], byte ram[]);
+extern void load_to_flash (const char*, byte[], byte[], byte[]);
 extern void decode_flash (decoded_t[], const byte[]);
 extern void set_function_symbol (int, const char*, int);
 
