@@ -10,7 +10,7 @@
 #endif /* !IN_AVRTEST */
 
 /* In- and Outputs */
-#define TICKS_PORT_ADDR  (0x24 + IOBASE) /* 4 Inputs */
+#define TICKS_PORT_ADDR  (0x24 + IOBASE) /* 4 Inputs (only 1st byte is magic) */
 #define ABORT_PORT_ADDR  (0x29 + IOBASE) /* 1 Output */
 #define LOG_PORT_ADDR    (0x2A + IOBASE) /* 1 Output */
 #define EXIT_PORT_ADDR   (0x2F + IOBASE) /* 1 Output */
@@ -29,6 +29,12 @@ enum
     LOG_FLOAT_CMD,
 
     LOG_TAG_FMT_CMD, LOG_TAG_PFMT_CMD,
+
+    TICKS_RESET_CMD, /* 1st TICKS command */
+    TICKS_IS_CYCLES_CMD, TICKS_IS_INSNS_CMD, TICKS_IS_PRAND_CMD,
+    TICKS_IS_RAND_CMD,
+    TICKS_RESET_ALL_CMD,  /* last TICKS command */
+
     LOG_X_sentinel
   };
 
@@ -39,9 +45,6 @@ enum
 /* Inputs */
 #define STDIN_PORT  STDIN_PORT_ADDR
 #define TICKS_PORT  TICKS_PORT_ADDR
-
-#define FIRST_MAGIC_IN_PORT  TICKS_PORT
-#define LAST_MAGIC_IN_PORT   STDIN_PORT
 
 /* Outputs */
 #define STDOUT_PORT STDOUT_PORT_ADDR
@@ -267,14 +270,16 @@ enum
 
 #define PERF_STATX_(P,X,n,c) do { P=(X); LOG_PORT = PERF_CMD_(n,c); } while (0)
 
-enum
-  {
-    TICKS_AS_CYCLES,
-    TICKS_AS_INSTRUCTIONS,
-    TICKS_AS_PRAND,
-    TICKS_AS_RAND,
-    TICKS_AS_LOG,
-  };
+/* Controlling what slot of TICKS_PORT will be accessable */
+
+#define TICKS_IS_CYCLES  LOG_SEND_CMD_ (TICKS_IS_CYCLES_CMD)  /* default */
+#define TICKS_IS_INSNS   LOG_SEND_CMD_ (TICKS_IS_INSNS_CMD)
+#define TICKS_IS_PRAND   LOG_SEND_CMD_ (TICKS_IS_PRAND_CMD)
+#define TICKS_IS_RAND    LOG_SEND_CMD_ (TICKS_IS_RAND_CMD)
+#define TICKS_RESET      LOG_SEND_CMD_ (TICKS_RESET_CMD)
+#define TICKS_RESET_ALL  LOG_SEND_CMD_ (TICKS_RESET_ALL_CMD)
+
+#define LOG_SEND_CMD_(N)    do { LOG_PORT = LOG_DUMP_CMD (N);} while (0)
 
 #endif /* IN_AVRTEST */
 
