@@ -21,46 +21,15 @@
   the Free Software Foundation, 59 Temple Place - Suite 330,
   Boston, MA 02111-1307, USA.  */
 
-#ifndef LOGGING_H
-#define LOGGING_H
+#ifndef GRAPH_H
+#define GRAPH_H
 
 #include <stdbool.h>
 
-// Decomposed IEEE 754 single
-typedef struct
-{
-  int sign_bit;
-  // Mantissa without (23 bits) and with the leading (implicit) 1 (24 bits)
-  unsigned mant, mant1;
-  int exp;
-  int exp_biased;
-  int fclass;
-  double x;
-} avr_float_t;
+extern void graph_elf_symbol (const char*, size_t, unsigned, bool);
+extern void graph_set_string_table (char*, size_t, int);
+extern void graph_finish_string_table (void);
+extern int graph_update_call_depth (const decoded_t*);
+extern void graph_write_dot (void);
 
-// Information for LOG_<data>
-typedef struct
-{
-  // # Bytes to read starting at R20
-  int size;
-  // Default printf format string
-  const char *fmt;
-  // Whether the value is signed / loacted in flash (LOG_PSTR etc.)
-  bool signed_p, in_rom;
-} layout_t;
-
-enum
-  {
-    FT_NORM,
-    FT_DENORM,
-    FT_INF,
-    FT_NAN
-  };
-
-extern const layout_t layout[];
-
-extern unsigned get_r20_value (const layout_t*);
-extern avr_float_t decode_avr_float (unsigned);
-extern char* read_string (char*, unsigned, bool, size_t);
-
-#endif // LOGGING_H
+#endif // GRAPH_H
