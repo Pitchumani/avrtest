@@ -3,8 +3,8 @@
                           avrtest NEWS
                           ============
 
-* BUGFIX of wrong decoding of first instruction if         r181  2014-10-20
-  entr-point is not 0x0.
+* BUGFIX of wrong decoding of first instruction if         r181  2016-06-25
+  entry-point is not 0x0.
 
 
 * Support call graph generation                            r178  2014-11-13
