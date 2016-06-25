@@ -815,9 +815,10 @@ do_skip:;
 void
 decode_flash (decoded_t d[], const byte flash[])
 {
-  word opcode1 = flash[0] | (flash[1] << 8);
+  unsigned i = program.code_start;
+  word opcode1 = flash[i] | (flash[i + 1] << 8);
   
-  for (unsigned i = program.code_start; i <= program.code_end; i += 2)
+  for (; i <= program.code_end; i += 2)
     {
       word opcode2 = flash[i + 2] | (flash[i + 3] << 8);
       d[i / 2].id = decode_opcode (&d[i / 2], opcode1, opcode2);

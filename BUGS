@@ -1,3 +1,6 @@
+* Wrong decoding of 1st instruction if entry-point is not 0x0.
+
+  Affected versions: r158 (2014-10-13) -- r180 (2016-06-24)
 
 * Wrong SBRC / SBRS / SBIC / SBIS / CPSE skip offset.
   
