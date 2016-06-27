@@ -56,16 +56,16 @@ enum
 
 /* This defines are for avrtest itself.  */
 
-// bits 5..3
+/* bits 5..3 */
 #define PERF_CMD(n) (0xf & ((n) >> 4))
 
 #define PERF_TAG_CMD(n) (0xf & ((n) >> 4))
 
-// bits 2..0 (LOG_CMD = 0)
-// bits 2..0 (LOG_CMD = LOG_TAG_PERF)
+/* bits 2..0 (LOG_CMD = 0) */
+/* bits 2..0 (LOG_CMD = LOG_TAG_PERF) */
 #define PERF_N(n)   ((n) & 0x7)
 
-// mask
+/* mask */
 #define PERF_ALL    0xfe
 
 #else /* IN_AVRTEST */
@@ -229,7 +229,7 @@ enum
   (((0UL + AVRTEST_INVALID_OPCODE) << 16)   \
    | 0x1000 | (r << 4) | (r & 0xf) | ((r & 0x10) << 5))
 
-enum
+__extension__ enum
 {
   SYSCo_0 = CPSE_rr_(0),  SYSCo_10 = CPSE_rr_(10),  SYSCo_20 = CPSE_rr_(20),
   SYSCo_1 = CPSE_rr_(1),  SYSCo_11 = CPSE_rr_(11),  SYSCo_21 = CPSE_rr_(21),
@@ -306,9 +306,9 @@ AVRTEST_DEF_SYSCALL1 (_29, 29, char, 24)
 AVRTEST_DEF_SYSCALL1 (_30, 30, int, 24)
 AVRTEST_DEF_SYSCALL0 (_31, 31)
 
-AVRTEST_DEF_SYSCALL0 (_0, 0) // LOG_OFF
-AVRTEST_DEF_SYSCALL0 (_1, 1) // LOG_ON
-AVRTEST_DEF_SYSCALL0 (_2, 2) // LOG_PERF
+AVRTEST_DEF_SYSCALL0 (_0, 0) /* LOG_OFF  */
+AVRTEST_DEF_SYSCALL0 (_1, 1) /* LOG_ON   */
+AVRTEST_DEF_SYSCALL0 (_2, 2) /* LOG_PERF */
 
 /* LOG_SET (N) */
 AVRTEST_DEF_SYSCALL1 (_3, 3, unsigned, 24)
