@@ -1,3 +1,16 @@
+2016-06-27  Georg-Johann Lay  <avr@gjlay.de>
+
+	* avrtest.h:  Don't use // comments.
+	[!IN_AVRTEST]: Use __extension__ with enum outside of range of int.
+
+2016-06-25  Georg-Johann Lay  <avr@gjlay.de>
+
+	BUGFIX: Fix wrong decoding of 1st instruction if entry-point
+	        is not 0x0.
+
+	* load-flash.c (decode_flash): Decode first opcode from
+	program.code_start, not from 0x0.
+
 2014-11-13  Georg-Johann Lay  <avr@gjlay.de>
 
 	Add call graph generation with -graph.
@@ -194,13 +207,6 @@
 	* loggin.g.c (print_tag): Tidy.
 	(do_log_port_cmd, perf_start, perf_stop, perf_instructions):
 	Handle PERF_START_CALL.
-2016-06-25  Georg-Johann Lay  <avr@gjlay.de>
-
-	BUGFIX: Fix wrong decoding of 1st instruction if entry-point
-	        is not 0x0.
-
-	* load-flash.c (decode_flash): Decode first opcode from
-	program.code_start, not from 0x0.
 
 2014-10-14  Georg-Johann Lay  <avr@gjlay.de>
 
