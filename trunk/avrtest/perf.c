@@ -213,7 +213,7 @@ static int
 print_tag (const perf_tag_t *t, const char *no_tag, const char *tag_prefix)
 {
   if (t->cmd < 0)
-    return printf (no_tag);
+    return printf ("%s", no_tag);
 
   printf ("%s", tag_prefix);
 
@@ -425,7 +425,7 @@ perf_stop (perfs_t *p, int i, bool dump_all, int cmd, int call_depth, int sp)
       p->tick.at_end = perf.tick;
       p->calls.at_end = call_depth;
       p->sp.at_end = sp;
-      if (p->call_only.sp == LONG_MAX)
+      if (p->call_only.sp == INT_MAX)
         {
           ticks = p->tick.at_end - p->tick.at_start;
           insns = p->insn.at_end - p->insn.at_start;

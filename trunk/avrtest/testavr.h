@@ -105,7 +105,12 @@ extern bool have_syscall[32];
 #define INLINE inline __attribute__((always_inline))
 #define NOINLINE __attribute__((noinline))
 #define NORETURN __attribute__((noreturn))
+
+#if defined (__i386__) || defined (__i868__)
 #define FASTCALL __attribute__((fastcall))
+#else
+#define FASTCALL /* empty */
+#endif
 
 enum
   {
