@@ -1,3 +1,11 @@
+2016-07-11  Georg-Johann Lay  <avr@gjlay.de>
+
+	Fix some build warnings.
+
+	* perf.c (print_tag): Don't use printf without format string.
+	(perf_stop) [call_only.sp]:  Compare against INT_MAX, ont LONG_MAX.
+	* testavr.h (FASTCALL): Only define if __i386__ or __i686__.
+
 2016-06-27  Georg-Johann Lay  <avr@gjlay.de>
 
 	Use new file avrtest.exp that holds common parts of the board
