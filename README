@@ -21,6 +21,12 @@ The executable that supports AVR XMEGA cores is named avrtest-xmega.
 In addition to the avrtest simulator, it supports the XMEGA instructions
 XCH, LAS, LAC and LAT.
 
+The executable that supports reduced AVR TINY cores is named avrtest-tiny.
+It only supports general purpose registers (GPRs) R16..R31,
+and many instructions like ADIW are not supported.  The LDS and STS
+instructions are 1-word instructions that can access SRAM in the
+range 0x40..0xbf.
+
 In the remainder, avrtest is explained.  avrtest-xmega works similar.
 avrtest does not simulate internal peripherals like timers, I/O ports,
 interrupts, etc.

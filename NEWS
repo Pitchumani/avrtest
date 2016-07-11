@@ -3,6 +3,10 @@
                           avrtest NEWS
                           ============
 
+* Support the reduced AVR Tiny cores with only 16 GPRs.    r185  2016-07-11
+  The new executables for that core architecture are
+  avrtest-tiny and avrtest-tiny_log.
+
 * BUGFIX of wrong decoding of first instruction if         r181  2016-06-25
   entry-point is not 0x0.
 

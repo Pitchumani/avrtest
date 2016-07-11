@@ -1,5 +1,37 @@
 2016-07-11  Georg-Johann Lay  <avr@gjlay.de>
 
+	Support reduced AVR Tiny cores in new avrtest-tiny[_log].
+	Supply boad description for ATtiny40.
+
+	* Makefile: Add rules to build avrtest-tiny, avrtest-tiny_log as
+	simulator variants for ISA_TINY.
+	(EXIT_MCUS): Add attiny40.
+	* avr-opcode.def (LDS1, STS1): New AVR_OPCODE.
+	* testavr.h (is_tiny): New prototype.
+	* avrtest.c (is_tiny): New global const variable.
+	(IOBASE, CX, cpu_reg): Set depending on ISA_TINY.
+	(get_reg, put_reg) [ISA_TINY]: Abort if regno < 16.
+	(load_indirect): Handle ISA_TINY.
+	(func_LDS1, func_STS1): Implement Tiny's LDS, STS.
+	* load-flash.c (decode_opcode) [is_tiny]: Only decode to ID_LDD_Y,
+	ID_STD_Y, ID_LDD_Z, ID_STD_Z if offset is 0.
+	Handle LDS1 and STS1.
+	(tiny_opcode_maybe_illegal): New static function.
+	(decode_flash) [is_tiny]: Use it to invalidate opcodes that are
+	not valid for Tiny.
+	* logging.c (log_patch_mnemo): Patch "LDD Y+q" etc. to "LD Y".
+	* options.h (arch_t.is_tiny): New field.
+	* options.c (arch_desc) ["avrtiny"]: New entry.
+	(usage, parse_args): Handle is_tiny cases.
+	* dejagnuboards/exit.c (avrtest_init_argc_argv): Use placement of
+	argv[] that does not interfere with __AVR_TINY_PM_BASE_ADDRESS__.
+	(exit) [__AVR_TINY__]: Use ST instead of STS in inline asm.
+	* dejagnuboards/attiny40-sim.exp: New board description for ATtiny40.
+	* dejagnuboards/atvrtest.exp (sim_load): Query avrtest_mcu for
+	"tiny" so we can select the right simulator executable: avrtest-tiny.
+
+2016-07-11  Georg-Johann Lay  <avr@gjlay.de>
+
 	Fix some build warnings.
 
 	* perf.c (print_tag): Don't use printf without format string.

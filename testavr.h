@@ -97,6 +97,7 @@ extern program_t program;
 extern unsigned cpu_PC;
 extern const int io_base;
 extern const bool is_xmega;
+extern const bool is_tiny;
 extern const bool is_avrtest_log;
 extern const unsigned invalid_opcode;
 

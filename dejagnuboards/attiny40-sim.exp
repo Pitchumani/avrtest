@@ -1,0 +1,22 @@
+# Directory where we find the avrtest executable and exit-*.o module.
+set avrtest_dir "/home/georg/gnu/source/avrtest"
+
+# Used as MCU when compiling and to find the right exit*.o module.
+# If you need a specific exit-<MCU>.o module, cd to ${avrtest_dir} and
+# run "make exit-<MCU>.o".
+
+# avr-gcc -mmcu=${mmcu} ...
+# ${avrtest_dir}/exit-${mmcu}.o
+set mmcu "attiny40"
+
+# Used to set MCU for avrtest.  One of "avr51", "avr6" or "avrxmega6".
+set avrtest_mmcu "avrtiny"
+
+# We add to CFLAGS a directory where we find AVR-LibC headers.
+# This need not to be in the install path of the toolchain under test
+# but should be "reasonably close" to it.
+set extra_cflags "-I/home/georg/gnu/install/gcc-6/avr/include"
+
+set extra_ldflags "-Wl,--defsym=__heap_end=0x800fff -Wl,--defsym=__DATA_REGION_LENGTH__=2K -Wl,--defsym=__TEXT_REGION_LENGTH__=16K"
+
+load_generic_config "avrtest"

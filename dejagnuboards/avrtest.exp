@@ -16,8 +16,11 @@ proc sim_load {dest prog args} {
     global avrtest_dir
 
     set xmega_position [string last "xmega" ${avrtest_mmcu} ]
+    set tiny_position  [string last "tiny"  ${avrtest_mmcu} ]
     if {$xmega_position != -1 } then {
 	set xmega "-xmega"
+    } elseif {$tiny_position != -1 } {
+	set xmega "-tiny"
     } else {
 	set xmega ""
     }

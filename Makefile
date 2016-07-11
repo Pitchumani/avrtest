@@ -25,9 +25,10 @@ CFLAGS_FOR_AVR	= -Os
 
 .SUFFIXES:
 
-A	= $(patsubst *%, avrtest%, * *_log *-xmega *-xmega_log)
-A_log	= $(patsubst *%, avrtest%, *_log *-xmega_log)
+A	= $(patsubst *%, avrtest%, * *_log *-xmega *-xmega_log *-tiny *-tiny_log)
+A_log	= $(patsubst *%, avrtest%, *_log *-xmega_log *-tiny_log)
 A_xmega	= $(patsubst *%, avrtest%, *-xmega *-xmega_log)
+A_tiny	= $(patsubst *%, avrtest%, *-tiny *-tiny_log)
 
 EXE	= $(A:=$(EXEEXT))
 
@@ -41,13 +42,14 @@ all-avr	: exit
 
 all-build : flag-tables
 
-EXIT_MCUS = atmega8 atmega168 atmega128 atmega103 atmega2560 atxmega128a3 atxmega128a1
+EXIT_MCUS = atmega8 atmega168 atmega128 atmega103 atmega2560 \
+	    atxmega128a3 atxmega128a1 attiny40
 
 EXIT_O = $(patsubst %,exit-%.o, $(EXIT_MCUS))
 
 exit	: $(EXIT_O)
 
-DEP_OPTIONS	= options.def options.h testavr.h Makefile
+DEP_OPTIONS	= options.def options.h testavr.h avr-opcode.def Makefile
 DEPS_PERF	= $(DEP_OPTIONS) perf.h logging.h avrtest.h
 DEPS_GRAPH	= $(DEP_OPTIONS) graph.h
 DEPS_LOGGING	= $(DEP_PERF) sreg.h graph.h
@@ -56,6 +58,7 @@ DEPS		= $(DEP_OPTIONS) sreg.h flag-tables.h
 
 $(A_log:=.s)	: XDEF += -DAVRTEST_LOG
 $(A_xmega:=.s)	: XDEF += -DISA_XMEGA
+$(A_tiny:=.s)	: XDEF += -DISA_TINY
 
 $(A:=$(EXEEXT))     : XOBJ += options.o load-flash.o flag-tables.o
 $(A:=$(EXEEXT))     : options.o load-flash.o flag-tables.o
@@ -86,7 +89,7 @@ $(A:=.s) : avrtest.c $(DEPS)
 	$(CC) $(CFLAGS_FOR_HOST) -S $< -o $@ $(XDEF)
 
 $(EXE) : avrtest%$(EXEEXT) : avrtest%.s
-	$(CC) $< -o $@ $(XOBJ) $(XLIB)
+	$(CC) $< -o $@ $(XOBJ) $(CFLAGS_FOR_HOST) $(XLIB)
 
 # Build some auto-generated files
 
@@ -102,12 +105,14 @@ gen-flag-tables$(BUILD_EXEEXT): gen-flag-tables.c sreg.h Makefile
 # Cross-compile Windows executables on Linux
 
 ifneq ($(EXEEXT),.exe)
-exe: avrtest.exe avrtest-xmega.exe avrtest_log.exe avrtest-xmega_log.exe
+exe:	avrtest.exe avrtest-xmega.exe avrtest-tiny.exe \
+	avrtest_log.exe avrtest-xmega_log.exe avrtest-tiny_log.exe
 
 W=-mingw32
 
 $(A_log:=$(W).s)   : XDEF += -DAVRTEST_LOG
 $(A_xmega:=$(W).s) : XDEF += -DISA_XMEGA
+$(A_tiny:=$(W).s)  : XDEF += -DISA_TINY
 
 $(A:=.exe)     : XOBJ_W += options$(W).o load-flash$(W).o flag-tables$(W).o
 $(A:=.exe)     : options$(W).o load-flash$(W).o flag-tables$(W).o
@@ -140,7 +145,7 @@ $(A:=$(W).s) : avrtest.c $(DEPS)
 
 EXE_W = $(A:=.exe)
 $(EXE_W) : avrtest%.exe : avrtest%$(W).s
-	$(WINCC) $< -o $@ $(XOBJ_W) $(XLIB)
+	$(WINCC) $< -o $@ $(XOBJ_W) $(CFLAGS_FOR_HOST) $(XLIB)
 
 endif
 
