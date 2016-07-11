@@ -153,9 +153,10 @@ http://lists.gnu.org/archive/html/avr-gcc-list/2009-09/msg00016.html
   to point to correct location of files for simulator (avrtest executable
   and exit-atmega128.o object file) or add avrtest to $PATH:
 
-    set result [exec /someplace/avrtest/avrtest -m 2000000000 -no-stdin $prog ]
+    set avrtest_dir "/someplace/avrtest"
 
-    set board_info ldflags "/someplace/avrtest/exit-atmega128.o" -Wl,-u,vfprintf ...
+  atmega128-sim.exp just sets some custom variables and then loads
+  avrtest.exp from the same directory.
 
 * Run the tests from gcc subdirectory of your avr-gcc build directory like:
 

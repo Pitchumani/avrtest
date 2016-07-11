@@ -1,5 +1,18 @@
 2016-06-27  Georg-Johann Lay  <avr@gjlay.de>
 
+	Use new file avrtest.exp that holds common parts of the board
+	description files.
+
+	* dejagnuboards/atmega103-sim.exp:
+	* dejagnuboards/atxmega128-sim.exp:
+	* dejagnuboards/atmega128-sim.exp: Factor out common code to...
+	* dejagnuboards/avrtest.exp: ...this new file.
+	* dejagnuboards/atmega2560-sim.exp: New file.
+	* dejagnuboards/atmega64-sim.exp: New file.
+	* README: Adjust.
+
+2016-06-27  Georg-Johann Lay  <avr@gjlay.de>
+
 	* avrtest.h:  Don't use // comments.
 	[!IN_AVRTEST]: Use __extension__ with enum outside of range of int.
 
