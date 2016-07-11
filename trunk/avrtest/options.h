@@ -36,6 +36,8 @@ typedef struct
   bool has_eind;
   // True if this is XMEGA
   bool is_xmega;
+  // True if this is reduced TINY
+  bool is_tiny;
   // Mask to detect whether cpu_PC is out of bounds
   unsigned int flash_addr_mask;
 } arch_t;

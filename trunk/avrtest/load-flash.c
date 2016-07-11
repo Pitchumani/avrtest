@@ -444,7 +444,7 @@ load_to_flash (const char *filename, byte *flash, byte *ram, byte *eeprom)
 
   FILE *fp = fopen (filename, "rb");
   if (!fp)
-    leave (LEAVE_IO, "can't fond or read program file");
+    leave (LEAVE_IO, "can't find or read program file");
 
   size_t len = fread (buf, 1, sizeof (buf), fp);
   if (len == sizeof (buf)
@@ -673,11 +673,26 @@ decode_opcode (decoded_t *d, unsigned opcode1, unsigned opcode2)
                 | ((opcode1 >> 7) & 0x18)
                 | ((opcode1 >> 8) & 0x20));
       decode = opcode1 & ~(mask_Rd_5 | mask_q_displ);
-      switch (decode) {
-      case 0x8008: return ID_LDD_Y;   // 10q0 qq0d dddd 1qqq | LDD
-      case 0x8000: return ID_LDD_Z;   // 10q0 qq0d dddd 0qqq | LDD
-      case 0x8208: return ID_STD_Y;   // 10q0 qq1d dddd 1qqq | STD
-      case 0x8200: return ID_STD_Z;   // 10q0 qq1d dddd 0qqq | STD
+      if (!is_tiny || d->op2 == 0)
+        switch (decode) {
+        case 0x8008: return ID_LDD_Y;   // 10q0 qq0d dddd 1qqq | LDD
+        case 0x8000: return ID_LDD_Z;   // 10q0 qq0d dddd 0qqq | LDD
+        case 0x8208: return ID_STD_Y;   // 10q0 qq1d dddd 1qqq | STD
+        case 0x8200: return ID_STD_Z;   // 10q0 qq1d dddd 0qqq | STD
+        }
+    }
+
+  if (is_tiny && hi4 == 0xa)
+    {
+      /* TINY opcodes with a 7-bit address and a register (4-bit Rd)
+         as operands */
+      d->op1 = 16 + ((opcode1 >> 4) & 0xF);
+      d->op2 = ((opcode1 & 0xf)
+                | ((opcode1 >> 5) & 0x30)
+                | ((opcode1 & 0x100) ? 0x40 : 0x80));
+      switch (hi5) {
+      case 0xa000 >> 11: return ID_LDS1; // 1010 0kkk dddd kkkk | LDS (Tiny)
+      case 0xa800 >> 11: return ID_STS1; // 1010 1kkk dddd kkkk | STS (Tiny)
       }
     }
 
@@ -712,15 +727,15 @@ decode_opcode (decoded_t *d, unsigned opcode1, unsigned opcode2)
 
   if (hi7 == (0x9600 >> 9))
     {
-    // opcodes with a 6-bit constant (K) and a register (Rd) as operands
-    d->op1 = ((opcode1 >> 3) & 0x06) + 24;
-    d->op2 = (opcode1 & 0xF) | ((opcode1 >> 2) & 0x30);
-    decode = opcode1 & ~(mask_K_6 | mask_Rd_2);
-    switch (decode) {
-    case 0x9600: return ID_ADIW;          // 1001 0110 KKdd KKKK | ADIW
-    case 0x9700: return ID_SBIW;          // 1001 0111 KKdd KKKK | SBIW
+      // opcodes with a 6-bit constant (K) and a register (Rd) as operands
+      d->op1 = ((opcode1 >> 3) & 0x06) + 24;
+      d->op2 = (opcode1 & 0xF) | ((opcode1 >> 2) & 0x30);
+      decode = opcode1 & ~(mask_K_6 | mask_Rd_2);
+      switch (decode) {
+      case 0x9600: return ID_ADIW;          // 1001 0110 KKdd KKKK | ADIW
+      case 0x9700: return ID_SBIW;          // 1001 0111 KKdd KKKK | SBIW
+      }
     }
-  }
 
   unsigned hi6 = opcode1 >> 10;
   if (hi6 == (0x9800 >> 10))
@@ -803,6 +818,9 @@ do_skip:;
       return ID_SYSCALL;   //  0001 00xX XXXX xxxx | CPSE X X = SYSCALL X
     }
 
+  if (is_tiny)
+    return index;
+
   if ((opcode2 & mask_LDS_STS) == 0x9000)
     return 1 + index;
 
@@ -810,6 +828,31 @@ do_skip:;
     return 1 + index;
 
   return index;
+}
+
+static void
+tiny_opcode_maybe_illegal (decoded_t *d)
+{
+  switch (d->id)
+    {
+    default:
+      break;
+
+    case ID_LDS:   case ID_JMP:      case ID_MOVW:
+    case ID_STS:   case ID_CALL:     case ID_ADIW:
+    case ID_MUL:   case ID_FMUL:     case ID_SBIW:
+    case ID_MULS:  case ID_FMULS:    case ID_EICALL:
+    case ID_MULSU: case ID_FMULSU:   case ID_EIJMP:
+    case ID_DES:   case ID_LPM:         case ID_ELPM:
+    case ID_XCH:   case ID_LPM_Z:       case ID_ELPM_Z:
+    case ID_LAS:   case ID_LPM_Z_incr:  case ID_ELPM_Z_incr:
+    case ID_LAC:   case ID_ESPM:
+    case ID_LAT:
+      d->op1 = IL_ILL;
+      d->op2 = 0;
+      d->id = ID_ILLEGAL;
+      break;
+    }
 }
 
 void
@@ -822,6 +865,8 @@ decode_flash (decoded_t d[], const byte flash[])
     {
       word opcode2 = flash[i + 2] | (flash[i + 3] << 8);
       d[i / 2].id = decode_opcode (&d[i / 2], opcode1, opcode2);
+      if (is_tiny)
+        tiny_opcode_maybe_illegal (&d[i / 2]);
       opcode1 = opcode2;
     }
 }

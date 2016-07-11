@@ -54,11 +54,20 @@
 // is_xmega :       options.c:parse_args()         legal -mmcu=MCU
 
 #ifdef ISA_XMEGA
-#define IOBASE  0
-#define CX 1
+#   define IOBASE  0
+#   define CX 1
+    const bool is_xmega = true;
+    const bool is_tiny  = false;
+#elif defined (ISA_TINY)
+#   define IOBASE  0
+#   define CX 0
+    const bool is_xmega = false;
+    const bool is_tiny  = true;
 #else
-#define IOBASE  0x20
-#define CX 0
+#   define IOBASE  0x20
+#   define CX 0
+    const bool is_xmega = false;
+    const bool is_tiny  = false;
 #endif
 
 #ifdef AVRTEST_LOG
@@ -67,7 +76,6 @@
 #define IS_AVRTEST_LOG 0
 #endif
 
-const bool is_xmega = CX == 1;
 const bool is_avrtest_log = IS_AVRTEST_LOG == 1;
 const int io_base = IOBASE;
 
@@ -94,13 +102,13 @@ program_t program;
 // Word address of current PC and offset into decoded_flash[].
 unsigned cpu_PC;
 
-#ifdef ISA_XMEGA
+#if defined ISA_XMEGA || defined ISA_TINY
 static byte cpu_reg[0x20];
 #else
 #define cpu_reg cpu_data
-#endif /* XMEGA */
+#endif /* XMEGA || TINY */
 
-// cpu_data is used to store registers (non-xmega), ioport values
+// cpu_data is used to store registers (non-xmega, non-tiny), ioport values
 // and actual SRAM
 static byte cpu_data[MAX_RAM_SIZE];
 static byte cpu_eeprom[MAX_EEPROM_SIZE];
@@ -337,6 +345,10 @@ static INLINE byte
 get_reg (int regno)
 {
   log_append ("(R%d)->%02x ", regno, cpu_reg[regno]);
+#ifdef ISA_TINY
+  if (regno < 16)
+    leave (LEAVE_ABORTED, "illegal tiny register R%d", regno);
+#endif
   return cpu_reg[regno];
 }
 
@@ -344,6 +356,10 @@ static INLINE void
 put_reg (int regno, byte value)
 {
   log_append ("(R%d)<-%02x ", regno, value);
+#ifdef ISA_TINY
+  if (regno < 16)
+    leave (LEAVE_ABORTED, "illegal tiny register %d", regno);
+#endif
   cpu_reg[regno] = value;
 }
 
@@ -392,7 +408,7 @@ data_write_word (int address, int value)
 }
 
 // ----------------------------------------------------------------------------
-// extern functions to make logging.c independent of ISA_XMEGA
+// extern functions to make logging.c independent of ISA_XMEGA and ISA_TINY
 
 const int addr_SREG = SREG;
 byte* const pSP = cpu_data + SPL;
@@ -617,7 +633,25 @@ load_indirect (int rd, int r_addr, int adjust, int offset)
 
   if (adjust < 0)
     addr += adjust;
+
+#if !defined ISA_TINY
   put_reg (rd, data_read_byte (addr + offset));
+#else
+  if (addr & 0x4000)
+    {
+      log_append ("{F:%04x} ", addr - 0x4000);
+      put_reg (rd, flash_read_byte (addr - 0x4000));
+      add_program_cycles (1);
+    }
+  else
+    put_reg (rd, data_read_byte (addr));
+#endif
+
+#if defined ISA_XMEGA || defined ISA_TINY
+  if (adjust >= 0 && !offset)
+    add_program_cycles (-1);
+#endif
+
   if (adjust > 0)
     addr += adjust;
   if (adjust)
@@ -632,7 +666,14 @@ store_indirect (int rd, int r_addr, int adjust, int offset)
 
   if (adjust < 0)
     addr += adjust;
+
   data_write_byte (addr + offset, get_reg (rd));
+
+#if defined ISA_XMEGA || defined ISA_TINY
+  if (adjust >= 0 && !offset)
+    add_program_cycles (-1);
+#endif
+
   if (adjust > 0)
     addr += adjust;
   if (adjust)
@@ -1016,6 +1057,12 @@ static OP_FUNC_TYPE func_LDS (int rd, int rr)
   put_reg (rd, data_read_byte (rr));
 }
 
+/* 1010 0kkk dddd kkkk | LDS (Tiny) */
+static OP_FUNC_TYPE func_LDS1 (int rd, int rr)
+{
+  put_reg (rd, data_read_byte (rr));
+}
+
 /* 1001 000d dddd 1100 | LD */
 static OP_FUNC_TYPE func_LD_X (int rd, int rr)
 {
@@ -1152,6 +1199,12 @@ static OP_FUNC_TYPE func_ROR (int rd, int rr)
 static OP_FUNC_TYPE func_STS (int rd, int rr)
 {
   //TODO:RAMPD
+  data_write_byte (rr, get_reg (rd));
+}
+
+/* 1010 1kkk dddd kkkk | STS (Tiny) */
+static OP_FUNC_TYPE func_STS1 (int rd, int rr)
+{
   data_write_byte (rr, get_reg (rd));
 }
 

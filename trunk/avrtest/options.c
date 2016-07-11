@@ -102,10 +102,11 @@ static const char GRAPH_USAGE[] =
 
 static const arch_t arch_desc[] =
   {
-    { "avr51",     false, false, false, 0x01ffff }, // default if is_xmega = 0
-    { "avrxmega6", true,  true,  true,  0x03ffff }, // default if is_xmega = 1
-    { "avr6",      true,  true,  false, 0x03ffff },
-    { NULL, false, false, false, 0}
+    { "avr51",     false, false, false, false, 0x01ffff }, // default
+    { "avrxmega6", true,  true,  true,  false, 0x03ffff }, // default if is_xmega = 1
+    { "avrtiny",   false, false, false, true,  0x01ffff }, // default if is_tiny  = 1
+    { "avr6",      true,  true,  false, false, 0x03ffff },
+    { NULL, false, false, false, false, 0}
   };
 
 arch_t arch;
@@ -145,7 +146,8 @@ usage (const char *fmt, ...)
 
   qprintf ("%s", USAGE);
   for (const arch_t *d = arch_desc; d->name; d++)
-    if (is_xmega == d->is_xmega)
+    if (is_xmega == d->is_xmega
+        && is_tiny == d->is_tiny)
       qprintf (" %s", d->name);
 
   if (!fmt)
@@ -202,7 +204,7 @@ void
 parse_args (int argc, char *argv[])
 {
   options.self = argv[0];
-  arch = arch_desc[is_xmega];
+  arch = arch_desc[is_xmega + 2 * is_tiny];
 
   for (int i = 1; i < argc; i++)
     if (str_eq  (argv[i], "?")
@@ -253,12 +255,13 @@ parse_args (int argc, char *argv[])
 
         case OPT_mmcu:
           if (!on)
-            arch = arch_desc[is_xmega];
+            arch = arch_desc[is_xmega + 2 * is_tiny];
           else
             for (const arch_t *a = arch_desc; ; a++)
               if (a->name == NULL)
                 usage ("unknown ARCH '%s'", options.s_mmcu);
-              else if (is_xmega == a->is_xmega
+              else if ((is_xmega == a->is_xmega
+                        && is_tiny == a->is_tiny)
                        && str_eq (options.s_mmcu, a->name))
                 {
                   arch = *a;

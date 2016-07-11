@@ -139,6 +139,14 @@ log_patch_mnemo (const decoded_t *d, char *buf)
       mask = d->op1;
       style = 3;
       break;
+    case ID_LDD_Y:  case ID_STD_Y:
+    case ID_LDD_Z:  case ID_STD_Z:
+      if (is_tiny)
+        {
+          buf[-4] = buf[-3];
+          buf[-5] = buf[-3] = buf[-2] = buf[-1] = ' '; 
+        }
+      return;
     }
 
   int val = mask_to_bit (mask);
