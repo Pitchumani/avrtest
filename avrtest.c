@@ -358,7 +358,7 @@ put_reg (int regno, byte value)
   log_append ("(R%d)<-%02x ", regno, value);
 #ifdef ISA_TINY
   if (regno < 16)
-    leave (LEAVE_ABORTED, "illegal tiny register %d", regno);
+    leave (LEAVE_ABORTED, "illegal tiny register R%d", regno);
 #endif
   cpu_reg[regno] = value;
 }
