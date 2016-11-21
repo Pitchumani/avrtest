@@ -15,8 +15,8 @@ set avrtest_mmcu "avr6"
 # We add to CFLAGS a directory where we find AVR-LibC headers.
 # This need not to be in the install path of the toolchain under test
 # but should be "reasonably close" to it.
-set extra_cflags "-I/home/georg/gnu/install/gcc-6/avr/include"
+set extra_cflags "-I/home/georg/gnu/install/gcc-6/avr/include "
 
-set extra_ldflags "-Wl,-Tbss=0x802000,--defsym=__heap_end=0x80ffff"
+set extra_ldflags "-Wl,--defsym=__stack=0x1fff -Wl,-Tbss=0x802000,--defsym=__heap_end=0x80ffff "
 
 load_generic_config "avrtest"
