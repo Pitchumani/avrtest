@@ -17,6 +17,6 @@ set avrtest_mmcu "avrtiny"
 # but should be "reasonably close" to it.
 set extra_cflags "-I/home/georg/gnu/install/gcc-6/avr/include"
 
-set extra_ldflags "-Wl,--defsym=__heap_end=0x800fff -Wl,--defsym=__DATA_REGION_LENGTH__=2K -Wl,--defsym=__TEXT_REGION_LENGTH__=16K"
+set extra_ldflags "-Wl,--defsym=__heap_end=0x800fff -Wl,--defsym=__DATA_REGION_LENGTH__=2K -Wl,--defsym=__TEXT_REGION_LENGTH__=16K -Tavrtiny-rodata.x "
 
 load_generic_config "avrtest"

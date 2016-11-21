@@ -1,5 +1,14 @@
 2016-11-21  Georg-Johann Lay  <avr@gjlay.de>
 
+	For ATtiny40, use a linker description file which leaves .rodata
+	in flash and adds 0x4000 to VMAs (virtual memory addresses).
+
+	* avrtiny-rodata.x: New file.
+	* dejagnuboards/attiny40-sim.exp (extra_ldflags):
+	Add -Tavrtiny-rodata.x.
+
+2016-11-21  Georg-Johann Lay  <avr@gjlay.de>
+
 	* dejagnuboards/atmega2560-sim.exp (extra_ldflags) [__stack]:
 	Define symbol to 0x1fff.
 
