@@ -229,7 +229,10 @@ int main (int argc, char *argv[])
   for (int c = fgetc (self); c != '#' ; c = fgetc (self))
     {
       if (c == EOF)
-        return EXIT_FAILURE;
+        {
+          fclose (self);
+          return EXIT_FAILURE;
+        }
       if (c == '\r')
         continue;
       fputc (c, stdout);
