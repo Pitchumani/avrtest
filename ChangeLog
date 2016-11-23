@@ -1,3 +1,7 @@
+2016-11-23  Martin Ettl  <ettlmartin@users.sf.net>
+
+	* gen-flag-tables.c (main): Close input file in case of an error.
+
 2016-11-21  Georg-Johann Lay  <avr@gjlay.de>
 
 	For ATtiny40, use a linker description file which leaves .rodata
