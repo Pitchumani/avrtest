@@ -55,6 +55,12 @@ AVRTEST_OPT (e, 0, entry_point)
 // Use return status
 AVRTEST_OPT (q, 0, quiet)
 
+// Run in gdb-server mode
+AVRTEST_OPT (g, 0, gdbserver_mode)
+
+// Specify the port to which gdb-server listens
+AVRTEST_OPT (p, 4242, port)
+
 // Whether to report information about avrtest's run time
 AVRTEST_OPT (runtime, 0, runtime)
 

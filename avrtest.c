@@ -34,6 +34,8 @@
 #include "flag-tables.h"
 #include "sreg.h"
 
+extern void run_gdbserver (int);
+
 // ---------------------------------------------------------------------------
 // register and port definitions
 
@@ -1770,6 +1772,11 @@ main (int argc, char *argv[])
   gettimeofday (&t_start, NULL);
 
   parse_args (argc, argv);
+
+  if (options.do_gdbserver_mode) {
+    run_gdbserver (options.do_port);
+    return EXIT_SUCCESS;
+  }
 
   if (options.do_runtime)
     gettimeofday (&t_load, NULL);

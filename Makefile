@@ -54,14 +54,15 @@ DEPS_PERF	= $(DEP_OPTIONS) perf.h logging.h avrtest.h
 DEPS_GRAPH	= $(DEP_OPTIONS) graph.h
 DEPS_LOGGING	= $(DEP_PERF) sreg.h graph.h
 DEPS_LOAD_FLASH = $(DEP_OPTIONS)
+DEPS_GDBSERVER = $(DEP_OPTIONS)
 DEPS		= $(DEP_OPTIONS) sreg.h flag-tables.h
 
 $(A_log:=.s)	: XDEF += -DAVRTEST_LOG
 $(A_xmega:=.s)	: XDEF += -DISA_XMEGA
 $(A_tiny:=.s)	: XDEF += -DISA_TINY
 
-$(A:=$(EXEEXT))     : XOBJ += options.o load-flash.o flag-tables.o
-$(A:=$(EXEEXT))     : options.o load-flash.o flag-tables.o
+$(A:=$(EXEEXT))     : XOBJ += options.o load-flash.o flag-tables.o gdbserver.o
+$(A:=$(EXEEXT))     : options.o load-flash.o flag-tables.o gdbserver.o
 
 $(A_log:=$(EXEEXT)) : XOBJ += logging.o graph.o perf.o
 $(A_log:=$(EXEEXT)) : XLIB += -lm
@@ -80,6 +81,9 @@ perf.o: perf.c $(DEPS_PERF)
 	$(CC) $(CFLAGS_FOR_HOST) -c $< -o $@ -DAVRTEST_LOG
 
 load-flash.o: load-flash.c $(DEPS_LOAD_FLASH)
+	$(CC) $(CFLAGS_FOR_HOST) -c $< -o $@
+
+gdbserver.o: gdbserver.c $(DEPS_GDBSERVER)
 	$(CC) $(CFLAGS_FOR_HOST) -c $< -o $@
 
 flag-tables.o: flag-tables.c Makefile

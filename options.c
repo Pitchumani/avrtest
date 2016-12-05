@@ -43,6 +43,8 @@ static const char USAGE[] =
   "  -d            Initialize SRAM from .data (for ELF program)\n"
   "  -e ENTRY      Byte address of program entry.  Default for ENTRY is\n"
   "                the entry point from the ELF program and 0 for non-ELF.\n"
+  "  -g            Run in gdb-server mode.\n"
+  "  -p PORTNUM    Port number in which gdbserver should run.\n"
   "  -m MAXCOUNT   Execute at most MAXCOUNT instructions.\n"
   "  -q            Quiet operation.  Only print messages explicitly\n"
   "                requested.  Pass exit status from the program.\n"
@@ -269,6 +271,14 @@ parse_args (int argc, char *argv[])
                 }
           break; // -mmcu=
 
+        case OPT_gdbserver_mode:
+          options.do_gdbserver_mode = 1;
+          break;
+        case OPT_port:
+          if (++i >= argc)
+            usage ("missing port number after '%s'", argv[i-1]);
+          options.do_port = get_valid_number (argv[i], "-p PORTNUM");
+          break;
         case OPT_entry_point:
           if (++i >= argc)
             usage ("missing program ENTRY point after '%s'", argv[i-1]);
@@ -310,7 +320,7 @@ parse_args (int argc, char *argv[])
         }
     }
 
-  if (program.name == NULL)
+  if ((options.do_gdbserver_mode == 0) && (program.name == NULL))
     usage ("missing program name");
 }
 
