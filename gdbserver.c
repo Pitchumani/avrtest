@@ -14,7 +14,7 @@ extern void bzero (void *__s, size_t __n);
 #define OK		0
 #define NOTOK	1
 
-int newsockfd;
+int newsockfd, process = 0;
 char buffer [BUFSIZE];
 char rbuffer [BUFSIZE];
 
@@ -73,20 +73,240 @@ gdb_process_notifications ()
 }
 
 int
+write_general_registers ()
+{
+  gdb_reply ("");
+  return OK;
+}
+
+void
+read_memory ()
+{
+}
+
+void
+read_general_registers (void)
+{
+}
+
+void
+write_memory ()
+{
+}
+
+void
+resume_execution ()
+{
+}
+
+struct target_sim_features {
+  int id;
+  char *feature;
+  char *support;
+  int len;
+} features[] = {
+{0, "multiprocess", "-", 13},
+{1, "swbreak", "+", 8},
+{2, "hwbreak", "-", 8},
+{3, "qRelocInsn", "-", 11}};
+
+void
+respond_packet (const char *response)
+{
+  char response_buf[BUFSIZE] = "";
+  int count = 0;
+  int checksum = 0;
+
+  response_buf[count++] = '$';
+
+  while (response)
+  {
+    checksum += (unsigned char)*response;
+    response_buf[count++] = *response;
+    response++;
+  }
+  response_buf[count++] = '#';
+  response_buf[count++] = hex_digits[((checksum >> 4) & 0xf)];
+  response_buf[count++] = hex_digits[(checksum & 0xff)];
+
+  write (newsockfd, response_buf, count);
+}
+
+enum query_type {
+  qATTACHED,
+  qSUPPORTED,
+  qSYMBOL,
+  qTSTATUS,
+  qXFER,
+  qFTHREADINFO,
+  qSTHREADINFO,
+  qUNKNOWN
+};
+
+enum query_type
+get_query_type ()
+{
+  int i = 1, j = 0;
+  char ch;
+  char qstr[20]="";
+  while (buffer [i])
+  {
+    if ((buffer[i] == ':') || (buffer[i] == ';') || (buffer[i] == ','))
+      break;
+    qstr[j++] = buffer[i++];
+  }
+
+  if (!strncmp (qstr, "Supported", 9))
+    return qSUPPORTED;
+  if (!strncmp (qstr, "TStatus", 7))
+    return qTSTATUS;
+  if (!strncmp (qstr, "Attached", 8))
+    return qATTACHED;
+  if (!strncmp (qstr, "fThreadInfo", 11))
+    return qFTHREADINFO;
+  if (!strncmp (qstr, "sThreadInfo", 11))
+    return qSTHREADINFO;
+  if (!strncmp (qstr, "Symbol", 6))
+    return qSYMBOL;
+  if (!strncmp (qstr, "Xfer", 4))
+    return qXFER;
+
+  return qUNKNOWN;
+}
+
+int
+process_set_packets ()
+{
+  gdb_reply ("");
+  return OK;
+}
+
+int
+process_query_packets ()
+{
+  /*
+    'qSupported [:gdbfeature [;gdbfeature]... ]'
+   reply:
+     '' or 'stubfeature [;stubfeature]...'
+  */
+  enum query_type qtype = get_query_type ();
+  fprintf (stderr, "Process query packets... (%d)\n", qtype);
+  switch (qtype)
+  {
+    case qATTACHED:
+      if (process)
+      {
+        gdb_reply ("1");
+        gslog ("Attached to existing process");
+      }
+      else
+      {
+        gdb_reply ("0");
+        gslog ("Create new process");
+        process = 1;
+      }
+      return OK;
+    case qSUPPORTED:
+      gdb_reply ("PacketSize=255");
+      gslog ("Sent features supported.");
+      return OK;
+    case qFTHREADINFO:
+      gdb_reply ("m1");
+      return OK;
+    case qSTHREADINFO:
+      gdb_reply ("1");
+      return OK;
+    case qSYMBOL:
+      gdb_reply ("");
+      gslog ("sent empty reply.");
+      return OK;
+    case qTSTATUS:
+      gdb_reply ("");//tunknown:0");//gdb_reply ("T0"); //gdb_reply ("tnotrun:0");
+      gslog ("Sent reply that trace is presently not running."); //gslog ("Sent reply no trace run yet.");
+      return OK;
+    case qXFER:
+      gdb_reply ("");
+      gslog ("sent empty reply.");
+      return OK;
+    default:
+      return NOTOK;
+  }
+}
+
+void
+set_thread ()
+{
+  switch (buffer[1])
+  {
+    case 'g':
+    case 'G':
+      gdb_reply ("OK");
+      break;
+    case 'm':
+    case 'M':
+      gdb_reply ("");
+      break;
+    case 'c':
+      gdb_reply ("E99");  // not supported
+      break;
+  }
+}
+
+int
 gdb_process_packets ()
 {
   char ch = buffer[0];
 
   switch (ch)
   {
+    case 'c': // 'c [addr]'
+      // Continue at addr, which is the address to resume. If addr is omitted, resume at current address.
+      resume_execution ();
+      break;
+
+    case 'g':
+      // 'g'
+      // ‘XX...’ or 'E NN'
+      read_general_registers ();
+      break;
+
+    case 'G':
+      // 'G XX...'
+      // OK or E NN
+      write_general_registers ();
+      break;
+
+    case 'H':
+      // H op thread-id
+      //  op - m,M,g,G
+      set_thread ();
+    case 'm': // 'm addr,length'
+      // Read length addressable memory units starting at address addr
+      read_memory ();
+      break;
+
+    case 'M': // 'M addr,length:XX...'
+      // Write length addressable memory units starting at address addr
+      write_memory ();
+      break;
+
     case 'q':
+      process_query_packets ();
+      break;
+
+    case 'Q':
+      process_set_packets ();
+      break;
+
+    case 's':
+      break;
+
     default:
       gdb_reply ("");
       break;
   }
   return OK;
 }
-
 
 int
 run_gdbserver (int portnumber)
